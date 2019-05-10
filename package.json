@@ -1,6 +1,6 @@
 {
   "name": "@gfot/strong-soap",
-  "version": "1.19.1",
+  "version": "1.19.2",
   "description": "A minimal node SOAP client",
   "engines": {
     "node": ">=6.0"
