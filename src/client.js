@@ -5,6 +5,7 @@
 
 'use strict';
 
+var {performance} = require('perf_hooks')
 var g = require('./globalize');
 var HttpClient = require('./http'),
   assert = require('assert'),
@@ -19,6 +20,7 @@ var HttpClient = require('./http'),
   debug = require('debug')('strong-soap:client'),
   debugDetail = require('debug')('strong-soap:client:detail'),
   debugSensitive = require('debug')('strong-soap:client:sensitive'),
+  debugSalestrip = require('debug')('strong-soap:salestrip'),
   utils = require('./utils');
 
 class Client extends Base {
@@ -125,6 +127,7 @@ class Client extends Base {
       };
 
     debug('client request. operation: %s args: %j options: %j extraHeaders: %j', operation.name, args, options, extraHeaders);
+    debugSalestrip('client.request.start %d', performance.now())
 
     var soapNsURI = 'http://schemas.xmlsoap.org/soap/envelope/';
     var soapNsPrefix = this.wsdl.options.envelopeKey || 'soap';
@@ -228,6 +231,8 @@ class Client extends Base {
 
 
     debug('client request, calling jsonToXml. args: %j', args);
+    debugSalestrip('client.request.json2xml %d', performance.now())
+
     xmlHandler.jsonToXml(soapBodyElement, nsContext, inputBodyDescriptor, args);
 
     if (self.security && self.security.postProcess) {
@@ -262,6 +267,7 @@ class Client extends Base {
       }
     };
 
+    debugSalestrip('client.request.execute %d', performance.now())
     req = self.httpClient.request(location, xml, function(err, response, body) {
       var result;
       var obj;
@@ -271,8 +277,10 @@ class Client extends Base {
       self.emit('response', body, response);
 
       debug('client response. response: %j body: %j', response, body);
+      debug('client.response %d', performance.now())
 
       if (err) {
+        debugSalestrip('client.response.error %d', performance.now())
         callback(err);
       } else {
 
@@ -350,6 +358,7 @@ class Client extends Base {
       self.lastRequestHeaders = req.headers;
     }
     debug('client response. lastRequestHeaders: %j', self.lastRequestHeaders);
+    debugSalestrip('client.response.end %d', performance.now())
   }
 }
 
