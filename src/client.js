@@ -134,7 +134,7 @@ class Client extends Base {
 
     debug('client request. operation: %s args: %j options: %j extraHeaders: %j', operation.name, args, options, extraHeaders);
     debugSalestrip('client.request.start %d', performance.now())
-    performance.mark('start.request')
+    performance.mark('request.start')
 
     var soapNsURI = 'http://schemas.xmlsoap.org/soap/envelope/';
     var soapNsPrefix = this.wsdl.options.envelopeKey || 'soap';
@@ -243,14 +243,14 @@ class Client extends Base {
     xmlHandler.jsonToXml(soapBodyElement, nsContext, inputBodyDescriptor, args);
 
     performance.mark('request.json2xml')
-    performance.measure('request.json2xml', 'request.start', 'request.json2xml')
+    performance.measure('Time to transform JSON to XML', 'request.start', 'request.json2xml')
 
     if (self.security && self.security.postProcess) {
       self.security.postProcess(envelope.header, envelope.body);
     }
 
     //Bydefault pretty print is true and request envelope is created with newlines and indentations
-    var prettyPrint = true;
+    var prettyPrint = false; // was true ****
     //some web services don't accept request envelope with newlines and indentations in which case user has to set {prettyPrint: false} as client option
     if (self.httpClient.options && self.httpClient.options.prettyPrint !== undefined) {
       prettyPrint = self.httpClient.options.prettyPrint;
@@ -294,7 +294,7 @@ class Client extends Base {
       if (err) {
         debugSalestrip('client.response.error %d', performance.now())
         performance.mark('request.fail')
-        performance.measure('request-fail', 'request.execute', 'request.fail')
+        performance.measure('Request failed and time lapsed was', 'request.execute', 'request.fail')
         callback(err);
       } else {
 
@@ -319,6 +319,8 @@ class Client extends Base {
             //  If the response is JSON then return it as-is.
             var json = _.isObject(body) ? body : tryJSONparse(body);
             if (json) {
+              performance.mark('response.json')
+              performance.measure('Response was json time elapsed', 'request.execute', 'response.json')
               return callback(null, response, json);
             }
           }
@@ -326,6 +328,8 @@ class Client extends Base {
           error.response = response;
           error.body = body;
           self.emit('soapError', error);
+          performance.mark('request.fault')
+          performance.measure('Request failed time elapsed', 'request.execute', 'request.fault')
           return callback(error, response, body);
         }
 
@@ -337,6 +341,8 @@ class Client extends Base {
           var error = new Error(g.f('Cannot parse response'));
           error.response = response;
           error.body = body;
+          performance.mark('response.no.parse')
+          performance.measure('Cannot parse response time elapsed', 'request.execute', 'response.no.parse')
           return callback(error, obj, body);
         }
 
@@ -363,6 +369,8 @@ class Client extends Base {
         }
         debug('client response. result: %j body: %j obj.Header: %j', result, body, obj.Header);
 
+        performance.mark('response.ok')
+        performance.measure('Request success time elapsed', 'request.execute', 'response.ok')
         callback(null, result, body, obj.Header);
       }
     }, headers, options, self);
@@ -373,8 +381,8 @@ class Client extends Base {
     }
     debug('client response. lastRequestHeaders: %j', self.lastRequestHeaders);
     debugSalestrip('client.response.end %d', performance.now())
-    performance.mark('request.done')
-    performance.measure('request-done', 'request.execute', 'request.done')
+    //performance.mark('request.done')
+    //performance.measure('request-done', 'request.execute', 'request.done')
   }
 }
 
