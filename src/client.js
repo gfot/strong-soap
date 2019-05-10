@@ -5,7 +5,7 @@
 
 'use strict';
 
-var {performance} = require('perf_hooks')
+var {PerformanceObserver, performance} = require('perf_hooks')
 var g = require('./globalize');
 var HttpClient = require('./http'),
   assert = require('assert'),
@@ -22,6 +22,12 @@ var HttpClient = require('./http'),
   debugSensitive = require('debug')('strong-soap:client:sensitive'),
   debugSalestrip = require('debug')('strong-soap:salestrip'),
   utils = require('./utils');
+
+const obs = new PerformanceObserver((list) => {
+  const entry = list.getEntries()[0]
+  console.log(entry.name, entry.duration)
+})
+obs.observe({entryTypes: ['measure']})
 
 class Client extends Base {
   constructor(wsdl, endpoint, options) {
@@ -128,6 +134,7 @@ class Client extends Base {
 
     debug('client request. operation: %s args: %j options: %j extraHeaders: %j', operation.name, args, options, extraHeaders);
     debugSalestrip('client.request.start %d', performance.now())
+    performance.mark('start.request')
 
     var soapNsURI = 'http://schemas.xmlsoap.org/soap/envelope/';
     var soapNsPrefix = this.wsdl.options.envelopeKey || 'soap';
@@ -235,6 +242,9 @@ class Client extends Base {
 
     xmlHandler.jsonToXml(soapBodyElement, nsContext, inputBodyDescriptor, args);
 
+    performance.mark('request.json2xml')
+    performance.measure('request.json2xml', 'request.start', 'request.json2xml')
+
     if (self.security && self.security.postProcess) {
       self.security.postProcess(envelope.header, envelope.body);
     }
@@ -268,6 +278,8 @@ class Client extends Base {
     };
 
     debugSalestrip('client.request.execute %d', performance.now())
+    performance.mark('request.execute')
+
     req = self.httpClient.request(location, xml, function(err, response, body) {
       var result;
       var obj;
@@ -281,6 +293,8 @@ class Client extends Base {
 
       if (err) {
         debugSalestrip('client.response.error %d', performance.now())
+        performance.mark('request.fail')
+        performance.measure('request-fail', 'request.execute', 'request.fail')
         callback(err);
       } else {
 
@@ -359,6 +373,8 @@ class Client extends Base {
     }
     debug('client response. lastRequestHeaders: %j', self.lastRequestHeaders);
     debugSalestrip('client.response.end %d', performance.now())
+    performance.mark('request.done')
+    performance.measure('request-done', 'request.execute', 'request.done')
   }
 }
 
